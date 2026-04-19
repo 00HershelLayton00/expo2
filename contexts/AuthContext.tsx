@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import React, { createContext, useContext, useState } from 'react';
-import { db } from '../lib/database';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { login } from '../lib/database/sqlite';
 
 interface AuthContextType {
   user: any;
@@ -10,35 +11,45 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(false); // ← false porque no hay sesión persistente en offline
+  const [loading, setLoading] = useState(true);
 
-  async function signIn(email: string, password: string) {
-    setLoading(true);
-    try {
-      const result = await db.login(email, password);
-      if (!result) throw new Error('Credenciales inválidas');
-      setUser(result.user);
-      setProfile(result.profile);
-      if (result.profile?.role === 'admin') {
-        router.replace('/(admin)/dashboard');
+  useEffect(() => {
+    AsyncStorage.getItem('session').then(data => {
+      if (data) {
+        const parsed = JSON.parse(data);
+        setUser(parsed.user);
+        setProfile(parsed.profile);
       }
-    } catch (error: any) {
-      throw new Error(error.message || 'Error de autenticación');
-    } finally {
       setLoading(false);
-    }
-  }
+    });
+  }, []);
 
-  async function signOut() {
+  const signIn = async (email: string, password: string) => {
+    const result = login(email, password);
+    if (!result) throw new Error('Credenciales inválidas');
+    
+    setUser(result.user);
+    setProfile(result.profile);
+    await AsyncStorage.setItem('session', JSON.stringify(result));
+    
+    if (result.profile.role === 'admin') {
+      router.replace('/(admin)/dashboard');
+    } else {
+      router.replace('/(chofer)/panel');
+    }
+  };
+
+  const signOut = async () => {
     setUser(null);
     setProfile(null);
+    await AsyncStorage.removeItem('session');
     router.replace('/');
-  }
+  };
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
@@ -47,4 +58,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider');
+  return context;
+}
+
+// Hook para proteger rutas (opcional)
+export function useProtectedRoute() {
+  const { user, profile, loading } = useAuth();
+  // Implementación básica
+}
