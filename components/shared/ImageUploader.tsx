@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -10,6 +10,18 @@ interface Props {
 
 export function ImageUploader({ label, value, onChange }: Props) {
   const pickImage = async () => {
+    Alert.alert(
+      'Seleccionar imagen',
+      '¿Cómo quieres agregar la imagen?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Galería', onPress: selectFromGallery },
+        { text: 'Cámara', onPress: takePhoto },
+      ]
+    );
+  };
+
+  const selectFromGallery = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -18,28 +30,58 @@ export function ImageUploader({ label, value, onChange }: Props) {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
       });
 
       if (!result.canceled && result.assets[0].uri) {
-        const uri = result.assets[0].uri;
-        
-        // Crear nombre único
-        const fileName = `imagen_${Date.now()}.jpg`;
-        const newUri = `${FileSystem.documentDirectory}${fileName}`;
-        
-        // Copiar archivo
-        await FileSystem.copyAsync({ from: uri, to: newUri });
-        
-        onChange(newUri);
-        Alert.alert('✅ Éxito', 'Imagen guardada');
+        await saveImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error('Error al seleccionar imagen:', error);
       Alert.alert('Error', 'No se pudo cargar la imagen');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Error', 'Se necesitan permisos para usar la cámara');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        await saveImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error al tomar foto:', error);
+      Alert.alert('Error', 'No se pudo tomar la foto');
+    }
+  };
+
+  const saveImage = async (uri: string) => {
+    try {
+      // Crear nombre único
+      const fileName = `imagen_${Date.now()}.jpg`;
+      const newUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      // Copiar archivo
+      await FileSystem.copyAsync({ from: uri, to: newUri });
+      
+      onChange(newUri);
+      Alert.alert('✅ Éxito', 'Imagen guardada');
+    } catch (error) {
+      console.error('Error al guardar imagen:', error);
+      Alert.alert('Error', 'No se pudo guardar la imagen');
     }
   };
 

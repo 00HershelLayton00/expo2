@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import { ImageUploader } from '../../components/shared/ImageUploader';
 import { useAuth } from '../../contexts/AuthContext';
 import { getChoferById, updatePerfilChofer } from '../../lib/database/sqlite';
 
@@ -9,7 +10,9 @@ export default function EditarPerfil() {
   const [form, setForm] = useState({
     telefono_whatsapp: '',
     horario_habitual: '',
-    notas_extra: ''
+    notas_extra: '',
+    foto_perfil_url: null as string | null,
+    foto_carro_url: null as string | null
   });
 
   useEffect(() => {
@@ -19,7 +22,9 @@ export default function EditarPerfil() {
         setForm({
           telefono_whatsapp: chofer.telefono_whatsapp,
           horario_habitual: chofer.condiciones?.horario_habitual || '',
-          notas_extra: chofer.condiciones?.notas_extra || ''
+          notas_extra: chofer.condiciones?.notas_extra || '',
+          foto_perfil_url: chofer.foto_perfil_url,
+          foto_carro_url: chofer.foto_carro_url
         });
       }
     }
@@ -33,7 +38,9 @@ export default function EditarPerfil() {
       condiciones: {
         horario_habitual: form.horario_habitual,
         notas_extra: form.notas_extra
-      }
+      },
+      foto_perfil_url: form.foto_perfil_url,
+      foto_carro_url: form.foto_carro_url
     });
 
     if (success) {
@@ -47,6 +54,8 @@ export default function EditarPerfil() {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Editar mi información</Text>
+      <ImageUploader label="Foto de perfil" value={form.foto_perfil_url} onChange={(url) => setForm({...form, foto_perfil_url: url})} />
+      <ImageUploader label="Foto del carro" value={form.foto_carro_url} onChange={(url) => setForm({...form, foto_carro_url: url})} />
       <Text style={styles.label}>WhatsApp *</Text>
       <TextInput style={styles.input} value={form.telefono_whatsapp} onChangeText={(t) => setForm({...form, telefono_whatsapp: t})} keyboardType="phone-pad" />
       <Text style={styles.label}>Horario habitual</Text>

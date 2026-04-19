@@ -7,7 +7,7 @@ interface AuthContextType {
   user: any;
   profile: any;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, remember?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -29,13 +29,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, remember = false) => {
     const result = login(email, password);
     if (!result) throw new Error('Credenciales inválidas');
     
     setUser(result.user);
     setProfile(result.profile);
     await AsyncStorage.setItem('session', JSON.stringify(result));
+
+    if (remember) {
+      await AsyncStorage.setItem('rememberedCredentials', JSON.stringify({ ci: email, password }));
+    } else {
+      await AsyncStorage.removeItem('rememberedCredentials');
+    }
     
     if (result.profile.role === 'admin') {
       router.replace('/(admin)/dashboard');
